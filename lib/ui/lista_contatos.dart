@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:contatos/helpers/contato.dart';
 import 'package:contatos/ui/perfil_contato.dart';
