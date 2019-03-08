@@ -1,7 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:contatos/helpers/contato.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:contatos/ui/perfil_contato.dart';
+
+enum OrderOptions { orderaz, orderza }
 
 class ListaContatos extends StatefulWidget {
   @override
@@ -11,6 +14,7 @@ class ListaContatos extends StatefulWidget {
 class _ListaContatosState extends State<ListaContatos> {
   ContatoHelpers contatoHelper = ContatoHelpers();
   List<Contato> _contatos = List();
+  String _nomeContato = '';
 
   @override
   void initState() {
@@ -21,7 +25,6 @@ class _ListaContatosState extends State<ListaContatos> {
 
   void _getAllContatos() {
     contatoHelper.getAllContatos().then((lista) {
-    print(lista);
       setState(() {
         _contatos = lista;
       });
@@ -45,12 +48,105 @@ class _ListaContatosState extends State<ListaContatos> {
     }
   }
 
+  void _showOptions(BuildContext context, int index) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return BottomSheet(
+          onClosing: () {},
+          builder: (BuildContext context) {
+            return Padding(
+              padding: EdgeInsets.all(10),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(18, 14, 18, 20),
+                    child: Text(
+                      'Opções de Contato',
+                      style: TextStyle(color: Colors.grey[700], fontSize: 18),
+                    ),
+                  ),
+                  ListTile(
+                    title: Text(
+                      'Editar',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    leading: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.edit, color: Colors.white, size: 18),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _navigationPerfilContato(contato: _contatos[index]);
+                    },
+                  ),
+                  ListTile(
+                    title: Text(
+                      'Ligar para $_nomeContato',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    leading: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.phone, color: Colors.white, size: 18),
+                    ),
+                    onTap: () {
+                      launch('tel: ${_contatos[index].telefone}');
+                      Navigator.pop(context);
+                    },
+                  ),
+                  ListTile(
+                    title: Text(
+                      'Remover contato',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    leading: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.delete, color: Colors.white, size: 18),
+                    ),
+                    onTap: () {
+                      contatoHelper.deleteContato(_contatos[index].id);
+                      setState(() {
+                        _nomeContato = '';
+                        _contatos.removeAt(index);
+                        Navigator.pop(context);
+                      });
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget buildItemContatos(BuildContext context, int index) {
     return Padding(
       padding: EdgeInsets.all(3),
       child: GestureDetector(
         onTap: () {
-          _navigationPerfilContato(contato: _contatos[index]);
+          setState(() {
+            _nomeContato = _contatos[index].nome;
+          });
+          _showOptions(context, index);
         },
         child: Card(
           child: Padding(
@@ -63,6 +159,7 @@ class _ListaContatosState extends State<ListaContatos> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     image: DecorationImage(
+                      fit: BoxFit.cover,
                       image: _contatos[index].img == null
                           ? AssetImage('images/user.png')
                           : FileImage(File(_contatos[index].img)),
@@ -104,6 +201,22 @@ class _ListaContatosState extends State<ListaContatos> {
     );
   }
 
+  void _ordenarLista(OrderOptions options) {
+    switch (options) {
+      case OrderOptions.orderaz:
+        _contatos.sort((a, b) {
+          return a.nome.toLowerCase().compareTo(b.nome.toLowerCase());
+        });
+        break;
+      case OrderOptions.orderza:
+        _contatos.sort((a, b) {
+          return b.nome.toLowerCase().compareTo(a.nome.toLowerCase());
+        });
+        break;
+    }
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,12 +226,19 @@ class _ListaContatosState extends State<ListaContatos> {
         title: Text('Contatos'),
         backgroundColor: Colors.redAccent,
         actions: <Widget>[
-          IconButton(
-            icon: Icon(Icons.more_vert),
-            onPressed: () {
-              print('teste');
-            },
-          )
+          PopupMenuButton<OrderOptions>(
+            itemBuilder: (context) => <PopupMenuEntry<OrderOptions>>[
+                  const PopupMenuItem<OrderOptions>(
+                    child: Text('Ordenar de A-Z'),
+                    value: OrderOptions.orderaz,
+                  ),
+                  const PopupMenuItem<OrderOptions>(
+                    child: Text('Ordenar de Z-A'),
+                    value: OrderOptions.orderza,
+                  ),
+                ],
+            onSelected: _ordenarLista,
+          ),
         ],
       ),
       body: ListView.builder(
